@@ -11,3 +11,8 @@ export const supabase = createClient(
     },
   }
 )
+// Réveille le backend Render au chargement de l'app
+if (import.meta.env.VITE_BACKEND_URL) {
+  fetch(`${import.meta.env.VITE_BACKEND_URL}/health`, { method: 'GET' })
+    .catch(() => {}) // silencieux si ça échoue
+}

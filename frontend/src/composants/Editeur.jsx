@@ -239,48 +239,62 @@ useEffect(() => {
   }, [telechargerMeme])
 
   const sauvegarderMeme = useCallback(async (estPublic = false) => {
-    const canvas = refInstance.current
-    if (!canvas) return
+  const canvas = refInstance.current
+  if (!canvas) return
 
-    dispatch({ type: 'SET_CHARGEMENT', valeur: true })
-    dispatch({ type: 'SET_ERREUR', message: null })
+  dispatch({ type: 'SET_CHARGEMENT', valeur: true })
+  dispatch({ type: 'SET_ERREUR', message: null })
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Tu dois être connecté.')
-      const uid = session.user.id
+  const tenterSauvegarde = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error('Tu dois être connecté.')
+    const uid = session.user.id
 
-      // Désélectionne AVANT export — corrige le canvas vide au 2e save
-      canvas.discardActiveObject()
-      canvas.renderAll()
+    canvas.discardActiveObject()
+    canvas.renderAll()
 
-      // Capture le canvas dans un nouveau canvas natif pour éviter
-      // le bug Fabric où toDataURL retourne vide après un premier appel
-      const canvasNatif = canvas.toCanvasElement()
-      const dataUrl     = canvasNatif.toDataURL('image/png')
-      const blob        = dataUrlVersBlob(dataUrl)
-      const nomFichier  = `${uid}/${Date.now()}.png`
+    const canvasNatif = canvas.toCanvasElement()
+    const dataUrl     = canvasNatif.toDataURL('image/png')
+    const blob        = dataUrlVersBlob(dataUrl)
+    const nomFichier  = `${uid}/${Date.now()}.png`
 
-      const { error: errStorage } = await supabase.storage
-        .from('memes-images')
-        .upload(nomFichier, blob, { contentType: 'image/png' })
-      if (errStorage) throw new Error(`Storage : ${errStorage.message}`)
+    const { error: errStorage } = await supabase.storage
+      .from('memes-images')
+      .upload(nomFichier, blob, { contentType: 'image/png' })
+    if (errStorage) throw new Error(`Storage : ${errStorage.message}`)
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('memes-images').getPublicUrl(nomFichier)
+    const { data: { publicUrl } } = supabase.storage
+      .from('memes-images').getPublicUrl(nomFichier)
 
-      const { error: errDB } = await supabase.from('memes')
-        .insert({ utilisateur_id: uid, url_image: publicUrl, est_public: estPublic })
-      if (errDB) throw new Error(`Base de données : ${errDB.message}`)
+    const { error: errDB } = await supabase.from('memes')
+      .insert({ utilisateur_id: uid, url_image: publicUrl, est_public: estPublic })
+    if (errDB) throw new Error(`Base de données : ${errDB.message}`)
 
-      dispatch({ type: 'SET_SUCCES', message: estPublic ? '🌐 Publié dans la galerie !' : '🔒 Sauvegardé !' })
-      onSauvegarde?.()
-    } catch (err) {
+    return publicUrl
+  }
+
+  try {
+    await tenterSauvegarde()
+    dispatch({ type: 'SET_SUCCES', message: estPublic ? '🌐 Publié dans la galerie !' : '🔒 Sauvegardé !' })
+    onSauvegarde?.()
+  } catch (err) {
+    // Retry automatique une seule fois si erreur transitoire
+    if (err.message.includes('Storage') || err.message.includes('fetch')) {
+      try {
+        await new Promise(r => setTimeout(r, 2000)) // attend 2s
+        await tenterSauvegarde()
+        dispatch({ type: 'SET_SUCCES', message: estPublic ? '🌐 Publié !' : '🔒 Sauvegardé !' })
+        onSauvegarde?.()
+      } catch (err2) {
+        dispatch({ type: 'SET_ERREUR', message: err2.message })
+      }
+    } else {
       dispatch({ type: 'SET_ERREUR', message: err.message })
-    } finally {
-      dispatch({ type: 'SET_CHARGEMENT', valeur: false })
     }
-  }, [onSauvegarde])
+  } finally {
+    dispatch({ type: 'SET_CHARGEMENT', valeur: false })
+  }
+}, [onSauvegarde])
 
   return (
     <div style={styles.conteneur}>

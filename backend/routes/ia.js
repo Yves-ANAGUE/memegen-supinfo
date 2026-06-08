@@ -26,7 +26,7 @@ routeur.post('/suggerer-legendes', limiteurIA, async (req, res) => {
 
   try {
     const completion = await clientGroq.chat.completions.create({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      model: process.env.GROQ_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
       max_tokens: 300,
       messages: [
         {
