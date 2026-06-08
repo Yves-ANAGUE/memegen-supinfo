@@ -32,7 +32,8 @@ routeur.post('/suggerer-legendes', limiteurIA, async (req, res) => {
 
   try {
     const completion = await clientGroq.chat.completions.create({
-      model: process.env.GROQ_MODEL || 'llama-3.2-11b-vision-preview',
+      // CORRECTION : Nouveau modèle valide par défaut
+      model: process.env.GROQ_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
       max_tokens: 300,
       messages: [
         {
