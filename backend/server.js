@@ -24,6 +24,8 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const appli = express()
+// Active la confiance envers le proxy pour éviter le plantage sur Render
+appli.set('trust proxy', 1)
 const port  = process.env.PORT || 3001
 
 // CORS strict — accepte localhost en dev, URL Vercel en prod
