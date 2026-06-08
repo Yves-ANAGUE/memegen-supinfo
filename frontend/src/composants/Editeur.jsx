@@ -2,6 +2,9 @@ import { useEffect, useRef, useReducer, useCallback } from 'react'
 import { fabric } from 'fabric'
 import { supabase } from '../lib/supabaseClient'
 
+// Force Fabric.js à utiliser le bon alignement standard pour éviter l'erreur visuelle
+fabric.Object.prototype.textBaseline = 'alphabetic'
+
 const FORMATS_ACCEPTES = ['image/jpeg', 'image/png', 'image/webp']
 const TAILLE_MAX_MO = 5
 const LARGEUR_CANVAS = 680
