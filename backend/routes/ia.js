@@ -1,12 +1,18 @@
 import { Router } from 'express'
 import Groq from 'groq-sdk'
+import https from 'https'
 import { limiteurIA } from '../middlewares/rateLimiter.js'
 
 const routeur    = Router()
 
 routeur.post('/suggerer-legendes', limiteurIA, async (req, res) => {
-  // Instancie Groq ici pour toujours prendre la clé courante
-  const clientGroq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+  // On utilise un agent HTTPS pour forcer la réutilisation de connexions propres
+  const agentIdia = new https.Agent({ keepAlive: true })
+  
+  const clientGroq = new Groq({ 
+    apiKey: process.env.GROQ_API_KEY,
+    httpAgent: agentIdia 
+  })
 
   const { imageBase64 } = req.body
 
@@ -26,7 +32,6 @@ routeur.post('/suggerer-legendes', limiteurIA, async (req, res) => {
 
   try {
     const completion = await clientGroq.chat.completions.create({
-      // Utilise le modèle Vision de secours si la variable Render échoue
       model: process.env.GROQ_MODEL || 'llama-3.2-11b-vision-preview',
       max_tokens: 300,
       messages: [
